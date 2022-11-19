@@ -17,6 +17,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        outputs.upToDateWhen { false }
+        showStandardStreams = true
+    }
 }
 
 tasks.withType<KotlinCompile> {
