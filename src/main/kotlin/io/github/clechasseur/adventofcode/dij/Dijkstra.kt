@@ -1,4 +1,4 @@
-package io.clechasseur.github.adventofcode.dij
+package io.github.clechasseur.adventofcode.dij
 
 object Dijkstra {
     data class Output<T : Comparable<T>>(val dist: Map<T, Long>, val prev: Map<T, T>)

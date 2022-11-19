@@ -1,6 +1,5 @@
 package io.github.clechasseur.adventofcode.y2022
 
-import io.clechasseur.github.adventofcode.y2022.Day1
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -1,4 +1,4 @@
-package io.clechasseur.github.adventofcode.dij
+package io.github.clechasseur.adventofcode.dij
 
 interface Graph<T : Comparable<T>> {
     fun allPassable(): List<T>

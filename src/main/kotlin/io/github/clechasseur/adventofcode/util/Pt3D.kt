@@ -1,4 +1,4 @@
-package io.clechasseur.github.adventofcode.util
+package io.github.clechasseur.adventofcode.util
 
 import kotlin.math.abs
 

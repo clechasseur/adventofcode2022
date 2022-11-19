@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm") version "1.7.21"
 }
 
-group = "io.clechasseur.github"
+group = "io.github.clechasseur"
 version = "1.0-SNAPSHOT"
 
 repositories {
