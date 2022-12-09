@@ -8,15 +8,15 @@ enum class Direction(val c: Char, val displacement: Pt) {
 
     val left: Direction
         get() = when (this) {
-        LEFT -> DOWN
-        else -> values()[ordinal - 1]
-    }
+            LEFT -> DOWN
+            else -> values()[ordinal - 1]
+        }
 
     val right: Direction
         get() = when (this) {
-        DOWN -> LEFT
-        else -> values()[ordinal + 1]
-    }
+            DOWN -> LEFT
+            else -> values()[ordinal + 1]
+        }
 
     companion object {
         val displacements: List<Pt> by lazy {
