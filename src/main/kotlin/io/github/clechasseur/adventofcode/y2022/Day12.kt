@@ -15,27 +15,35 @@ object Day12 {
         return dist[heightmap.endPos]!!.toInt()
     }
 
+    fun part2(): Int {
+        val heightmap = Heightmap(input)
+        val (dist, _) = Dijkstra.build(heightmap, heightmap.startPos)
+        return heightmap.allLowestPos.minOf { dist[it]!! }.toInt()
+    }
+
     private class Heightmap(asString: String) : Graph<Pt> {
         val pts: Map<Pt, Char> = asString.lineSequence().flatMapIndexed { y, line ->
             line.mapIndexed { x, elevation -> Pt(x, y) to elevation }
         }.toMap()
 
         val startPos: Pt
-            get() = pts.entries.single { it.value == 'S' }.key
-        val endPos: Pt
             get() = pts.entries.single { it.value == 'E' }.key
+        val endPos: Pt
+            get() = pts.entries.single { it.value == 'S' }.key
+        val allLowestPos: Collection<Pt>
+            get() = pts.filterValues { it == 'a' || it == 'S' }.keys
 
         fun elevation(pt: Pt): Char = when (val e = pts[pt]) {
             'S' -> 'a'
-            'E', null -> 'z'
-            else -> e
+            'E' -> 'z'
+            else -> e ?: error("$pt is outside the heightmap")
         }
 
         override fun allPassable(): List<Pt> = pts.keys.toList()
         override fun neighbours(node: Pt): List<Pt> = Direction.displacements.map {
             node + it
         }.filter {
-            elevation(it) - elevation(node) <= 1
+            it in pts.keys && elevation(it) - elevation(node) >= -1
         }
         override fun dist(a: Pt, b: Pt): Long = 1L
     }
