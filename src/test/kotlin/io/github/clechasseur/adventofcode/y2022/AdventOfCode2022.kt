@@ -1,5 +1,6 @@
 package io.github.clechasseur.adventofcode.y2022
 
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -184,6 +185,12 @@ class AdventOfCode2022 {
         @Test
         fun `day 15, part 1`() {
             assertEquals(4919281, Day15.part1())
+        }
+
+        @Test
+        @Ignore("Never completes")
+        fun `day 15, part 2`() {
+            assertEquals(0L, Day15.part2())
         }
     }
 }

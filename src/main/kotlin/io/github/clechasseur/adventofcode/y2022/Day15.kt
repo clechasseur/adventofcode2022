@@ -45,6 +45,18 @@ object Day15 {
         }
     }
 
+    fun part2(): Long {
+        val arrangement = input.toArrangement()
+        val distressBeacon = (0..4_000_000).asSequence().flatMap { y ->
+            (0..4_000_000).asSequence().map { x -> Pt(x, y) }
+        }.first { pt ->
+            arrangement.sensors.entries.none { (sensor, beacon) ->
+                manhattan(sensor, pt) <= manhattan(sensor, beacon)
+            }
+        }
+        return distressBeacon.x.toLong() * 4_000_000L + distressBeacon.y.toLong()
+    }
+
     private data class Arrangement(val sensors: Map<Pt, Pt>) {
         val beacons: Collection<Pt>
             get() = sensors.values
