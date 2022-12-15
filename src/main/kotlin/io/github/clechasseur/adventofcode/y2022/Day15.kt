@@ -32,42 +32,22 @@ object Day15 {
 
     private val inputRegex = """^Sensor at x=(-?\d+), y=(-?\d+): closest beacon is at x=(-?\d+), y=(-?\d+)$""".toRegex()
 
-    fun part1(): Int = input.toArrangement().coverage.filterKeys {
-        it.y == 2_000_000
-    }.count { (pt, id) ->
-        id == Identifier.RANGE
-    }
-
-    private enum class Identifier {
-        SENSOR,
-        BEACON,
-        RANGE,
+    fun part1(): Int {
+        val arrangement = input.toArrangement()
+        val minSensor = arrangement.sensors.keys.minBy { it.x }
+        val maxSensor = arrangement.sensors.keys.maxBy { it.x }
+        val minX = minSensor.x - manhattan(minSensor, arrangement.sensors[minSensor]!!)
+        val maxX = maxSensor.x + manhattan(maxSensor, arrangement.sensors[maxSensor]!!)
+        return (minX..maxX).map { Pt(it, 2_000_000) }.count { pt ->
+            arrangement.sensors.entries.any { (sensor, beacon) ->
+                manhattan(sensor, pt) <= manhattan(sensor, beacon)
+            } && pt !in arrangement.beacons
+        }
     }
 
     private data class Arrangement(val sensors: Map<Pt, Pt>) {
         val beacons: Collection<Pt>
             get() = sensors.values
-
-        val coverage: Map<Pt, Identifier>
-            get() = sensors.keys.flatMap {
-                coveredBySensor(it)
-            }.associateWith {
-                Identifier.RANGE
-            } + sensors.keys.associateWith {
-                Identifier.SENSOR
-            } + beacons.associateWith {
-                Identifier.BEACON
-            }
-
-        private fun coveredBySensor(sensor: Pt): Sequence<Pt> {
-            val beacon = sensors[sensor]!!
-            val dist = manhattan(sensor, beacon)
-            return (sensor.x - dist..sensor.x + dist).asSequence().flatMap { x ->
-                (sensor.y - dist..sensor.y + dist).asSequence().map { y -> Pt(x, y) }
-            }.filter {
-                manhattan(it, sensor) <= dist
-            }
-        }
     }
 
     private fun String.toArrangement(): Arrangement = Arrangement(lines().associate { line ->
