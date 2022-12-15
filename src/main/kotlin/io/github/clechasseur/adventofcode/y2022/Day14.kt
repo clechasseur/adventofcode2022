@@ -7,26 +7,31 @@ import kotlin.math.sign
 object Day14 {
     private val input = Day14Data.input
 
-    fun part1(): Int {
-        val cave = input.toCave()
-        val minX = cave.solid.minOf { it.x }
-        val maxX = cave.solid.maxOf { it.x }
-        val minY = 0
-        val maxY = cave.abyss
-        (minY..maxY).forEach { y ->
-            println((minX..maxX).joinToString("") { x -> when {
-                Pt(x, y) == Pt(500, 0) -> "+"
-                cave.solid.contains(Pt(x, y)) -> "#"
-                cave.sand.contains(Pt(x, y)) -> "o"
-                else -> "."
-            } })
-        }
-        return -1
-    }
+    fun part1(): Int = generateSequence(input.toCave()) {
+        it.dropOneSand(Pt(500, 0))
+    }.last().sand.size
 
     private data class Cave(val solid: Set<Pt>, val sand: Set<Pt> = emptySet()) {
-        val abyss: Int
-            get() = solid.maxOf { it.y } + 1
+        val obstacles: Set<Pt> = solid + sand
+        val abyss: Int = solid.maxOf { it.y } + 1
+
+        fun dropOneSand(from: Pt): Cave? {
+            var pt = from
+            while (pt.y < abyss) {
+                var nextPt = pt + Pt(0, 1)
+                if (obstacles.contains(nextPt)) {
+                    nextPt = pt + Pt(-1, 1)
+                    if (obstacles.contains(nextPt)) {
+                        nextPt = pt + Pt(1, 1)
+                        if (obstacles.contains(nextPt)) {
+                            return Cave(solid, sand + pt)
+                        }
+                    }
+                }
+                pt = nextPt
+            }
+            return null
+        }
     }
 
     private fun String.toCave(): Cave = Cave(lines().flatMap { line ->
