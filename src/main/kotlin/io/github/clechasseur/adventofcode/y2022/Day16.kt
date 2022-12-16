@@ -1,5 +1,7 @@
 package io.github.clechasseur.adventofcode.y2022
 
+import io.github.clechasseur.adventofcode.dij.Dijkstra
+import io.github.clechasseur.adventofcode.dij.Graph
 import io.github.clechasseur.adventofcode.y2022.data.Day16Data
 
 object Day16 {
@@ -8,7 +10,7 @@ object Day16 {
     private val valveRegex = """^Valve ([A-Z]{2}) has flow rate=(\d+); tunnels? leads? to valves? ([A-Z]{2}(?:, [A-Z]{2})*)$""".toRegex()
 
     fun part1(): Int = simulate(State(
-        valves = input.lines().map { it.toValve() }.map { it.id to it }.toMap(),
+        network = Network(input.lines().map { it.toValve() }),
         pos = "AA",
         open = emptySet(),
         minutesRemaining = 30,
@@ -17,66 +19,80 @@ object Day16 {
 
     private data class Valve(val id: String, val flowRate: Int, val tunnels: List<String>)
 
+    private data class Network(val valves: Map<String, Valve>) : Graph<String> {
+        constructor(valves: List<Valve>) : this(valves.associateBy { it.id })
+
+        val workingValves: Map<String, Valve>
+            get() = valves.filterValues { it.flowRate > 0 }
+
+        override fun allPassable(): List<String> = valves.keys.toList()
+        override fun neighbours(node: String): List<String> = valves[node]!!.tunnels
+        override fun dist(a: String, b: String): Long = 1L
+    }
+
     private data class State(
-        val valves: Map<String, Valve>,
+        val network: Network,
         val pos: String,
         val open: Set<String>,
         val minutesRemaining: Int,
         val releasedPressure: Int
     ) {
-        val workingValves: Map<String, Valve>
-            get() = valves.filterValues { it.flowRate > 0 }
-
         fun nextMoves(): List<State> {
             if (minutesRemaining == 0) {
                 return emptyList()
             }
 
-            val nextReleasedPressure = releasedPressure + open.sumOf { valves[it]!!.flowRate }
-            val nextMinutesRemaining = minutesRemaining - 1
-            if (open == workingValves.keys) {
+            val stillClosed = network.workingValves - open
+            if (stillClosed.isEmpty()) {
                 return listOf(copy(
-                    releasedPressure = nextReleasedPressure,
-                    minutesRemaining = nextMinutesRemaining
+                    pos = "AA",
+                    minutesRemaining = 0,
+                    releasedPressure = releasedPressure + network.workingValves.values.sumOf { valve ->
+                        valve.flowRate * minutesRemaining
+                    }
                 ))
             }
 
-            val curValve = valves[pos]!!
-            val moves = curValve.tunnels.map { nextValve ->
-                copy(
-                    pos = nextValve,
-                    minutesRemaining = nextMinutesRemaining,
-                    releasedPressure = nextReleasedPressure
-                )
-            }.toMutableList()
-            if (curValve.id !in open && curValve.flowRate > 0) {
-                moves += copy(
-                    open = open + curValve.id,
-                    minutesRemaining = nextMinutesRemaining,
-                    releasedPressure = nextReleasedPressure
-                )
+            val (dist, _) = Dijkstra.build(network, pos)
+            val moves = stillClosed.values.mapNotNull { valve ->
+                val valveDist = (dist[valve.id]!! + 1).toInt()
+                if (valveDist > minutesRemaining) null else {
+                    copy(
+                        pos = valve.id,
+                        open = open + valve.id,
+                        minutesRemaining = minutesRemaining - valveDist,
+                        releasedPressure = releasedPressure + open.sumOf { openValve ->
+                            network.valves[openValve]!!.flowRate * valveDist
+                        }
+                    )
+                }
             }
-
+            if (moves.isEmpty()) {
+                return listOf(copy(
+                    pos = "AA",
+                    minutesRemaining = 0,
+                    releasedPressure = releasedPressure + open.sumOf { openValve ->
+                        network.valves[openValve]!!.flowRate * minutesRemaining
+                    }
+                ))
+            }
             return moves
         }
     }
 
-    private data class StateId(val pos: String, val open: Set<String>) {
-        constructor(state: State) : this(state.pos, state.open)
-    }
-
     private fun simulate(initialState: State): Set<State> {
         var states = setOf(initialState)
-        while (true) {
-            val nextStates = states.flatMap { it.nextMoves() }.toSet()
-            if (nextStates.isEmpty()) {
-                return states
+        val finalStates = mutableSetOf<State>()
+        while (states.isNotEmpty()) {
+            val (nextStates, newFinalStates) = states.flatMap {
+                it.nextMoves()
+            }.partition {
+                it.minutesRemaining > 0
             }
-            val nextIds = nextStates.map { StateId(it) }.toSet()
-            states = nextIds.map { id ->
-                nextStates.filter { StateId(it) == id }.maxBy { it.releasedPressure }
-            }.toSet()
+            finalStates += newFinalStates
+            states = nextStates.toSet()
         }
+        return finalStates
     }
 
     private fun String.toValve(): Valve {

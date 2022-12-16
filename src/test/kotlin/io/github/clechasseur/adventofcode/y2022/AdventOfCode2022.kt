@@ -195,9 +195,8 @@ class AdventOfCode2022 {
 
     class Day16Puzzles {
         @Test
-        @Ignore("Too slow")
         fun `day 16, part 1`() {
-            assertEquals(0, Day16.part1())
+            assertEquals(1647, Day16.part1())
         }
     }
 }
