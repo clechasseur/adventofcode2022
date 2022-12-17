@@ -26,6 +26,7 @@ object Day16 {
 
         val workingValves: Map<String, Valve>
             get() = valves.filterValues { it.flowRate > 0 }
+        val dij = valves.keys.associateWith { Dijkstra.build(this, it) }
 
         override fun allPassable(): List<String> = valves.keys.toList()
         override fun neighbours(node: String): List<String> = valves[node]!!.tunnels
@@ -72,10 +73,9 @@ object Day16 {
             }
 
             val possibleDestValves = network.workingValves.keys - newOpen
-            val dij = still.distinct().associateWith { Dijkstra.build(network, it) }
             val possibleDestValvesByStill = still.associateWith { atRest ->
                 possibleDestValves.filter { destValve ->
-                    dij[atRest]!!.dist[destValve]!!.toInt() + 1 <= minutesRemaining
+                    network.dij[atRest]!!.dist[destValve]!!.toInt() + 1 <= minutesRemaining
                 }.toSet()
             }
             newStill.addAll(still.filter { atRest ->
@@ -97,7 +97,7 @@ object Day16 {
                 ))
             }
 
-            return nextMoving(soonToBeMoving, possibleDestValvesByStill, dij).map { (newMoves, newAtRest) ->
+            return nextMoving(network, soonToBeMoving, possibleDestValvesByStill).map { (newMoves, newAtRest) ->
                 copy(
                     open = newOpen,
                     minutesRemaining = minutesRemaining - 1,
@@ -111,29 +111,29 @@ object Day16 {
         }
 
         private fun nextMoving(
+            network: Network,
             still: List<String>,
             possibleDestValvesByStill: Map<String, Set<String>>,
-            dij: Map<String, Dijkstra.Output<String>>,
             usedValves: Set<String> = emptySet(),
             soFar: Pair<List<Moving>, List<String>> = emptyList<Moving>() to emptyList()
         ): Sequence<Pair<List<Moving>, List<String>>> = if (still.isNotEmpty()) {
             still.asSequence().flatMap { atRest ->
                 val possibleDest = possibleDestValvesByStill[atRest]!! - usedValves
                 possibleDest.asSequence().flatMap { destValve ->
-                    val path = Dijkstra.assemblePath(dij[atRest]!!.prev, atRest, destValve)!!.drop(1)
+                    val path = Dijkstra.assemblePath(network.dij[atRest]!!.prev, atRest, destValve)!!.drop(1)
                     val moving = Moving(path.first(), destValve, path.drop(1))
                     nextMoving(
+                        network,
                         still - atRest,
                         possibleDestValvesByStill,
-                        dij,
                         usedValves + destValve,
                         (soFar.first + moving) to soFar.second
                     )
                 } + if (possibleDest.size < still.size) {
                     nextMoving(
+                        network,
                         still - atRest,
                         possibleDestValvesByStill,
-                        dij,
                         usedValves,
                         soFar.first to (soFar.second + atRest)
                     )

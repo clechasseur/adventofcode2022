@@ -195,7 +195,6 @@ class AdventOfCode2022 {
 
     class Day16Puzzles {
         @Test
-        @Ignore("Takes about 20 sec on my machine")
         fun `day 16, part 1`() {
             assertEquals(1647, Day16.part1())
         }
