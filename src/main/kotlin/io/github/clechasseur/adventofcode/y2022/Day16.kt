@@ -14,6 +14,11 @@ object Day16 {
         State(pos = listOf("AA"), open = emptySet(), minutesRemaining = 30, releasedPressure = 0)
     ).maxOf { it.releasedPressure }
 
+    fun part2(): Int = simulate(
+        Network(input.lines().map { it.toValve() }),
+        State(pos = listOf("AA", "AA"), open = emptySet(), minutesRemaining = 26, releasedPressure = 0)
+    ).maxOf { it.releasedPressure }
+
     private data class Valve(val id: String, val flowRate: Int, val tunnels: List<String>)
 
     private data class Network(val valves: Map<String, Valve>) : Graph<String> {
@@ -39,7 +44,7 @@ object Day16 {
             }
 
             val stillClosed = network.workingValves.keys - open
-            val dij = pos.map { it to Dijkstra.build(network, it) }
+            val dij = pos.distinct().associateWith { Dijkstra.build(network, it) }
             val moves = movesForPos(network, pos, dij, stillClosed).toList()
             if (moves.isEmpty()) {
                 return listOf(copy(
@@ -56,7 +61,7 @@ object Day16 {
         private fun movesForPos(
             network: Network,
             remainingPos: List<String>,
-            dij: List<Pair<String, Dijkstra.Output<String>>>,
+            dij: Map<String, Dijkstra.Output<String>>,
             stillClosed: Set<String>,
             matches: List<Pair<String, Pair<String, Int>>> = emptyList(),
             unmoving: List<String> = emptyList()
@@ -66,27 +71,28 @@ object Day16 {
                     return emptySequence()
                 }
 
-                val winner = matches.minBy { it.second.second }
+                val winnerDist = matches.minOf { it.second.second }
+                val winners = matches.filter { it.second.second == winnerDist }
                 val newPos = matches.map { match ->
-                    if (match == winner) match.second.first else {
-                        val matchDij = dij.single { it.first == match.first }.second
+                    if (match in winners) match.second.first else {
+                        val matchDij = dij[match.first]!!
                         val path = Dijkstra.assemblePath(matchDij.prev, match.first, match.second.first)!!
-                        path.asSequence().take(winner.second.second + 1).last()
+                        path.asSequence().take(winnerDist + 1).last()
                     }
                 } + remainingPos + unmoving
                 return sequenceOf(copy(
                     pos = newPos.sorted(),
-                    open = open + winner.second.first,
-                    minutesRemaining = minutesRemaining - winner.second.second,
+                    open = open + winners.map { it.second.first },
+                    minutesRemaining = minutesRemaining - winnerDist,
                     releasedPressure = releasedPressure + open.sumOf { openValve ->
-                        network.valves[openValve]!!.flowRate * winner.second.second
+                        network.valves[openValve]!!.flowRate * winnerDist
                     }
                 ))
             }
 
             val curPos = remainingPos.first()
             val otherPos = remainingPos.drop(1)
-            val curDij = dij.single { it.first == curPos }.second
+            val curDij = dij[curPos]!!
             val dist = stillClosed.mapNotNull { closedValve ->
                 val valveDist = curDij.dist[closedValve]!!.toInt() + 1
                 if (valveDist <= minutesRemaining) closedValve to valveDist else null

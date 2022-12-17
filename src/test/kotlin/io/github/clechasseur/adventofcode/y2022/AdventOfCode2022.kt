@@ -198,5 +198,11 @@ class AdventOfCode2022 {
         fun `day 16, part 1`() {
             assertEquals(1647, Day16.part1())
         }
+
+        @Test
+        @Ignore("Blows up")
+        fun `day 16, part 2`() {
+            assertEquals(0, Day16.part2())
+        }
     }
 }
