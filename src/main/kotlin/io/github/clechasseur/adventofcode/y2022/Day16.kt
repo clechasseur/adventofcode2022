@@ -12,12 +12,12 @@ object Day16 {
     fun part1(): Int = simulate(
         Network(input.lines().map { it.toValve() }),
         State(pos = listOf("AA"), open = emptySet(), minutesRemaining = 30, releasedPressure = 0)
-    ).maxOf { it.releasedPressure }
+    ).releasedPressure
 
     fun part2(): Int = simulate(
         Network(input.lines().map { it.toValve() }),
         State(pos = listOf("AA", "AA"), open = emptySet(), minutesRemaining = 26, releasedPressure = 0)
-    ).maxOf { it.releasedPressure }
+    ).releasedPressure
 
     private data class Valve(val id: String, val flowRate: Int, val tunnels: List<String>)
 
@@ -38,94 +38,79 @@ object Day16 {
         val minutesRemaining: Int,
         val releasedPressure: Int
     ) {
-        fun nextMoves(network: Network): List<State> {
+        fun nextMove(network: Network): State {
             if (minutesRemaining == 0) {
-                return emptyList()
+                return this
             }
 
-            val stillClosed = network.workingValves.keys - open
             val dij = pos.distinct().associateWith { Dijkstra.build(network, it) }
-            val moves = movesForPos(network, pos, dij, stillClosed).toList()
+            val stillClosed = (network.workingValves.keys - open).toMutableSet()
+            val moves = mutableListOf<Move>()
+            val unmoving = mutableListOf<String>()
+            pos.forEach { curPos ->
+                val bestMove = stillClosed.mapNotNull { destValve ->
+                    val dist = dij[curPos]!!.dist[destValve]!!.toInt() + 1
+                    if (dist <= minutesRemaining) Move(curPos, destValve, dist) else null
+                }.maxByOrNull { move ->
+                    simulate(network, copy(
+                        pos = (pos - curPos + move.destValve).sorted(),
+                        open = open + move.destValve,
+                        minutesRemaining = minutesRemaining - move.dist,
+                        releasedPressure = releasedPressure + open.sumOf { openValve ->
+                            network.valves[openValve]!!.flowRate * move.dist
+                        }
+                    ), false).releasedPressure
+                }
+                if (bestMove != null) {
+                    moves.add(bestMove)
+                    stillClosed.remove(bestMove.destValve)
+                } else {
+                    unmoving.add(curPos)
+                }
+            }
+
             if (moves.isEmpty()) {
-                return listOf(copy(
+                return copy(
                     pos = List(pos.size) { "AA" },
                     minutesRemaining = 0,
                     releasedPressure = releasedPressure + open.sumOf { openValve ->
                         network.valves[openValve]!!.flowRate * minutesRemaining
                     }
-                ))
-            }
-            return moves
-        }
-
-        private fun movesForPos(
-            network: Network,
-            remainingPos: List<String>,
-            dij: Map<String, Dijkstra.Output<String>>,
-            stillClosed: Set<String>,
-            matches: List<Pair<String, Pair<String, Int>>> = emptyList(),
-            unmoving: List<String> = emptyList()
-        ): Sequence<State> {
-            if (remainingPos.isEmpty() || stillClosed.isEmpty()) {
-                if (matches.isEmpty()) {
-                    return emptySequence()
-                }
-
-                val winnerDist = matches.minOf { it.second.second }
-                val winners = matches.filter { it.second.second == winnerDist }
-                val newPos = matches.map { match ->
-                    if (match in winners) match.second.first else {
-                        val matchDij = dij[match.first]!!
-                        val path = Dijkstra.assemblePath(matchDij.prev, match.first, match.second.first)!!
-                        path.asSequence().take(winnerDist + 1).last()
-                    }
-                } + remainingPos + unmoving
-                return sequenceOf(copy(
-                    pos = newPos.sorted(),
-                    open = open + winners.map { it.second.first },
-                    minutesRemaining = minutesRemaining - winnerDist,
-                    releasedPressure = releasedPressure + open.sumOf { openValve ->
-                        network.valves[openValve]!!.flowRate * winnerDist
-                    }
-                ))
-            }
-
-            val curPos = remainingPos.first()
-            val otherPos = remainingPos.drop(1)
-            val curDij = dij[curPos]!!
-            val dist = stillClosed.mapNotNull { closedValve ->
-                val valveDist = curDij.dist[closedValve]!!.toInt() + 1
-                if (valveDist <= minutesRemaining) closedValve to valveDist else null
-            }.toMap()
-            return dist.entries.asSequence().flatMap { (closedValve, valveDist) ->
-                movesForPos(
-                    network,
-                    otherPos,
-                    dij,
-                    stillClosed - closedValve,
-                    matches + (curPos to (closedValve to valveDist)),
-                    unmoving
                 )
-            } + if (dist.size < remainingPos.size) {
-                movesForPos(network, otherPos, dij, stillClosed, matches, unmoving + curPos)
-            } else emptySequence()
+            }
+
+            val nextMoveDist = moves.minOf { it.dist }
+            val nextMoves = moves.filter { it.dist == nextMoveDist }
+            val newPos = moves.map { move ->
+                if (move in nextMoves) move.destValve else {
+                    val moveDij = dij[move.pos]!!
+                    val path = Dijkstra.assemblePath(moveDij.prev, move.pos, move.destValve)!!
+                    path.take(nextMoveDist + 1).last()
+                }
+            } + unmoving
+            return copy(
+                pos = newPos.sorted(),
+                open = open + nextMoves.map { it.destValve },
+                minutesRemaining = minutesRemaining - nextMoveDist,
+                releasedPressure = releasedPressure + open.sumOf { openValve ->
+                    network.valves[openValve]!!.flowRate * nextMoveDist
+                }
+            )
         }
+
+        private data class Move(val pos: String, val destValve: String, val dist: Int)
     }
 
-    private fun simulate(network: Network, initialState: State): Set<State> {
-        var states = setOf(initialState)
-        val finalStates = mutableSetOf<State>()
-        while (states.isNotEmpty()) {
-            val (nextStates, newFinalStates) = states.flatMap {
-                it.nextMoves(network)
-            }.partition {
-                it.minutesRemaining > 0
-            }
-            finalStates += newFinalStates
-            states = nextStates.toSet()
+    private fun simulate(network: Network, initialState: State, print: Boolean = true): State = generateSequence(initialState) {
+        it.nextMove(network)
+    }.filter {
+        if (print) {
+            println(it)
         }
-        return finalStates
-    }
+        true
+    }.dropWhile {
+        it.minutesRemaining > 0
+    }.first()
 
     private fun String.toValve(): Valve {
         val match = valveRegex.matchEntire(this) ?: error("Wrong valve spec: $this")
