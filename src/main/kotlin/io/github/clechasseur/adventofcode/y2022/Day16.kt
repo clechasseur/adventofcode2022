@@ -74,8 +74,15 @@ object Day16 {
 
             val possibleDestValves = network.workingValves.keys - newOpen
             val possibleDestValvesByStill = still.associateWith { atRest ->
-                possibleDestValves.filter { destValve ->
+                possibleDestValves.asSequence().filter { destValve ->
                     network.dij[atRest]!!.dist[destValve]!!.toInt() + 1 <= minutesRemaining
+                }.map { destValve ->
+                    val dist = network.dij[atRest]!!.dist[destValve]!!.toInt() + 1
+                    destValve to network.valves[destValve]!!.flowRate * (minutesRemaining - dist)
+                }.sortedByDescending { (_, potential) ->
+                    potential
+                }.take(10).map { (destValve, _) ->
+                    destValve
                 }.toSet()
             }
             newStill.addAll(still.filter { atRest ->
