@@ -3,21 +3,16 @@ package io.github.clechasseur.adventofcode.y2022
 import io.github.clechasseur.adventofcode.dij.Dijkstra
 import io.github.clechasseur.adventofcode.dij.Graph
 import io.github.clechasseur.adventofcode.y2022.data.Day16Data
+import kotlin.math.max
 
 object Day16 {
     private val input = Day16Data.input
 
     private val valveRegex = """^Valve ([A-Z]{2}) has flow rate=(\d+); tunnels? leads? to valves? ([A-Z]{2}(?:, [A-Z]{2})*)$""".toRegex()
 
-    fun part1(): Int = simulate(
-        Network(input.lines().map { it.toValve() }),
-        State(open = emptySet(), minutesRemaining = 30, releasedPressure = 0, still = listOf("AA"))
-    ).maxOf { it.releasedPressure }
+    fun part1(): Int = simulate(Network(input.lines().map { it.toValve() }), 0)
 
-    fun part2(): Int = simulate(
-        Network(input.lines().map { it.toValve() }),
-        State(open = emptySet(), minutesRemaining = 26, releasedPressure = 0, still = listOf("AA", "AA"))
-    ).maxOf { it.releasedPressure }
+    fun part2(): Int = simulate(Network(input.lines().map { it.toValve() }), 1)
 
     private data class Valve(val id: String, val flowRate: Int, val tunnels: List<String>)
 
@@ -33,135 +28,90 @@ object Day16 {
         override fun dist(a: String, b: String): Long = 1L
     }
 
-    private data class Moving(val pos: String, val destValve: String, val path: List<String>)
+    private data class Moving(val destValve: String, val arriveAt: Int)
 
     private data class State(
         val open: Set<String>,
         val minutesRemaining: Int,
         val releasedPressure: Int,
         val still: List<String>,
-        val moving: Set<Moving> = emptySet()
+        val moving: List<Moving>
     ) {
-        fun nextMoves(network: Network): List<State> {
-            require(minutesRemaining > 0) { "Stop getting next moves, we're done" }
+        constructor(numElephants: Int) : this(
+            open = emptySet(),
+            minutesRemaining = 30 - 4 * numElephants,
+            releasedPressure = 0,
+            still = List(numElephants + 1) { "AA" },
+            moving = emptyList()
+        )
 
-            if (open == network.workingValves.keys) {
-                return listOf(copy(
+        fun nextMoves(network: Network): Sequence<State> {
+            if (minutesRemaining == 0 || open == network.workingValves.keys) {
+                return sequenceOf(copy(
                     minutesRemaining = 0,
-                    releasedPressure = releasedPressure + open.sumOf { openValve ->
-                        network.valves[openValve]!!.flowRate * minutesRemaining
-                    },
+                    releasedPressure = releasedPressure + pressureForMinutes(network, open, minutesRemaining),
                     still = List(still.size) { "AA" },
-                    moving = emptySet()
+                    moving = emptyList()
                 ))
             }
 
-            val newOpen = open.toMutableSet()
-            val newStill = mutableListOf<String>()
-            val newMoving = mutableSetOf<Moving>()
-
-            moving.forEach { inMovement ->
-                if (inMovement.path.isNotEmpty()) {
-                    newMoving.add(inMovement.copy(
-                        pos = inMovement.path.first(),
-                        path = inMovement.path.drop(1)
-                    ))
-                } else {
-                    newOpen.add(inMovement.destValve)
-                    newStill.add(inMovement.pos)
-                }
-            }
-
-            val possibleDestValves = network.workingValves.keys - newOpen
-            val possibleDestValvesByStill = still.associateWith { atRest ->
-                possibleDestValves.asSequence().filter { destValve ->
-                    network.dij[atRest]!!.dist[destValve]!!.toInt() + 1 <= minutesRemaining
-                }.map { destValve ->
-                    val dist = network.dij[atRest]!!.dist[destValve]!!.toInt() + 1
-                    destValve to network.valves[destValve]!!.flowRate * (minutesRemaining - dist)
-                }.sortedByDescending { (_, potential) ->
-                    potential
-                }.take(10).map { (destValve, _) ->
-                    destValve
-                }.toSet()
-            }
-            newStill.addAll(still.filter { atRest ->
-                atRest in possibleDestValvesByStill.filterValues { it.isEmpty() }
-            })
-
-            val soonToBeMoving = still.filter { atRest ->
-                atRest in possibleDestValvesByStill.filterValues { it.isNotEmpty() }
-            }
-            if (soonToBeMoving.isEmpty()) {
-                return listOf(copy(
-                    open = newOpen,
-                    minutesRemaining = minutesRemaining - 1,
-                    releasedPressure = releasedPressure + open.sumOf { openValve ->
-                        network.valves[openValve]!!.flowRate
-                    },
-                    still = newStill.sorted(),
-                    moving = newMoving
+            if (still.isEmpty()) {
+                val nextMinutes = moving.maxOf { it.arriveAt }
+                val stopping = moving.filter { it.arriveAt == nextMinutes }.map { it.destValve }
+                return sequenceOf(copy(
+                    open = open + stopping,
+                    minutesRemaining = nextMinutes,
+                    releasedPressure = releasedPressure + pressureForMinutes(
+                        network,
+                        open,
+                        minutesRemaining - nextMinutes
+                    ),
+                    still = still + stopping,
+                    moving = moving.filterNot { it.arriveAt == nextMinutes }
                 ))
             }
 
-            return nextMoving(network, soonToBeMoving, possibleDestValvesByStill).map { (newMoves, newAtRest) ->
-                copy(
-                    open = newOpen,
-                    minutesRemaining = minutesRemaining - 1,
-                    releasedPressure = releasedPressure + open.sumOf { openValve ->
-                        network.valves[openValve]!!.flowRate
-                    },
-                    still = (newStill + newAtRest).sorted(),
-                    moving = newMoving + newMoves
-                )
-            }.toList()
+            val nextToMove = still.first()
+            return (network.workingValves.keys - open).asSequence().map { destValve ->
+                Moving(destValve, minutesRemaining - (network.dij[nextToMove]!!.dist[destValve]!!.toInt() + 1))
+            }.filter { move ->
+                move.arriveAt >= 0
+            }.map { move ->
+                copy(still = still - nextToMove, moving = moving + move)
+            } + sequenceOf(copy(
+                still = still - nextToMove,
+                moving = moving + Moving(nextToMove, 0)
+            ))
         }
 
-        private fun nextMoving(
-            network: Network,
-            still: List<String>,
-            possibleDestValvesByStill: Map<String, Set<String>>,
-            usedValves: Set<String> = emptySet(),
-            soFar: Pair<List<Moving>, List<String>> = emptyList<Moving>() to emptyList()
-        ): Sequence<Pair<List<Moving>, List<String>>> = if (still.isNotEmpty()) {
-            still.asSequence().flatMap { atRest ->
-                val possibleDest = possibleDestValvesByStill[atRest]!! - usedValves
-                possibleDest.asSequence().flatMap { destValve ->
-                    val path = Dijkstra.assemblePath(network.dij[atRest]!!.prev, atRest, destValve)!!.drop(1)
-                    val moving = Moving(path.first(), destValve, path.drop(1))
-                    nextMoving(
-                        network,
-                        still - atRest,
-                        possibleDestValvesByStill,
-                        usedValves + destValve,
-                        (soFar.first + moving) to soFar.second
-                    )
-                } + if (possibleDest.size < still.size) {
-                    nextMoving(
-                        network,
-                        still - atRest,
-                        possibleDestValvesByStill,
-                        usedValves,
-                        soFar.first to (soFar.second + atRest)
-                    )
-                } else emptySequence()
-            }
-        } else sequenceOf(soFar)
+        fun maxPotentialReleasedPressure(network: Network): Int = releasedPressure + pressureForMinutes(
+            network,
+            network.workingValves.keys,
+            minutesRemaining
+        )
+
+        private fun pressureForMinutes(network: Network, openValves: Collection<String>, minutes: Int): Int {
+            return openValves.sumOf { network.valves[it]!!.flowRate * minutes }
+        }
     }
 
-    private fun simulate(network: Network, initialState: State): Set<State> {
-        var states = setOf(initialState)
-        val finalStates = mutableSetOf<State>()
+    private fun simulate(network: Network, numElephants: Int): Int {
+        var states = setOf(State(numElephants))
+        var maxReleasedPressure = 0
         while (states.isNotEmpty()) {
-            val (nextStates, newFinalStates) = states.flatMap {
+            val (nextStates, finalStates) = states.flatMap {
                 it.nextMoves(network)
             }.partition {
                 it.minutesRemaining > 0
             }
-            finalStates += newFinalStates
-            states = nextStates.toSet()
+            if (finalStates.isNotEmpty()) {
+                maxReleasedPressure = max(maxReleasedPressure, finalStates.maxOf { it.releasedPressure })
+            }
+            states = nextStates.filter { state ->
+                state.maxPotentialReleasedPressure(network) > maxReleasedPressure
+            }.toSet()
         }
-        return finalStates
+        return maxReleasedPressure
     }
 
     private fun String.toValve(): Valve {
