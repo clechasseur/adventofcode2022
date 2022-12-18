@@ -200,9 +200,9 @@ class AdventOfCode2022 {
         }
 
         @Test
-        @Ignore("Blows up")
+        @Ignore("Took 1.5 minutes to run on my machine")
         fun `day 16, part 2`() {
-            assertEquals(0, Day16.part2())
+            assertEquals(2169, Day16.part2())
         }
     }
 }
