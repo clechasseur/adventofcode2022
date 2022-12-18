@@ -19,8 +19,7 @@ object Day16 {
     private data class Network(val valves: Map<String, Valve>) : Graph<String> {
         constructor(valves: List<Valve>) : this(valves.associateBy { it.id })
 
-        val workingValves: Map<String, Valve>
-            get() = valves.filterValues { it.flowRate > 0 }
+        val workingValves = valves.filterValues { it.flowRate > 0 }
         val dij = valves.keys.associateWith { Dijkstra.build(this, it) }
 
         override fun allPassable(): List<String> = valves.keys.toList()
@@ -99,17 +98,17 @@ object Day16 {
         var states = setOf(State(numElephants))
         var maxReleasedPressure = 0
         while (states.isNotEmpty()) {
-            val (nextStates, finalStates) = states.flatMap {
+            val nextStates = mutableSetOf<State>()
+            states.asSequence().flatMap {
                 it.nextMoves(network)
-            }.partition {
-                it.minutesRemaining > 0
+            }.forEach { state ->
+                if (state.minutesRemaining == 0) {
+                    maxReleasedPressure = max(maxReleasedPressure, state.releasedPressure)
+                } else if (state.maxPotentialReleasedPressure(network) > maxReleasedPressure) {
+                    nextStates.add(state)
+                }
             }
-            if (finalStates.isNotEmpty()) {
-                maxReleasedPressure = max(maxReleasedPressure, finalStates.maxOf { it.releasedPressure })
-            }
-            states = nextStates.filter { state ->
-                state.maxPotentialReleasedPressure(network) > maxReleasedPressure
-            }.toSet()
+            states = nextStates
         }
         return maxReleasedPressure
     }
