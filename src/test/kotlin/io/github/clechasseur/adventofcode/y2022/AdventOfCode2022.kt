@@ -225,9 +225,8 @@ class AdventOfCode2022 {
         }
 
         @Test
-        @Ignore("Doesn't work")
         fun `day 18, part 2`() {
-            assertEquals(0, Day18.part2())
+            assertEquals(2564, Day18.part2())
         }
     }
 }
