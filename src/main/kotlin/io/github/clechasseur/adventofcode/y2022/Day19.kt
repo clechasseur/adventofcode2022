@@ -11,16 +11,21 @@ object Day19 {
 
     fun part2(): Int = input.lines().take(3).map { it.toBlueprint().geodesAfter(32) }.reduce { a, b -> a * b }
 
-    private fun Blueprint.geodesAfter(minutes: Int): Int = generateSequence(setOf(State(this))) { states ->
+    private fun Blueprint.geodesAfter(minutes: Int): Int = generateSequence(setOf(State(this)) to 1) { (states, minute) ->
         val nextStates = states.asSequence().flatMap { it.nextStates() }.toSet()
-        nextStates.groupBy { it.robots }.values.flatMap { bestStates ->
+        val mostGeodes = nextStates.maxOf { it.resources[ResourceType.GEODE]!! }
+        nextStates.filter {
+            mostGeodes - it.resources[ResourceType.GEODE]!! <= minutes - minute
+        }.groupBy {
+            it.robots
+        }.values.flatMap { bestStates ->
             bestStates.filter { state -> bestStates.none {
                 it != state && it.resources.all { (resource, inStock) ->
                     state.resources[resource]!! <= inStock
                 }
             } }
-        }.toSet()
-    }.drop(minutes).first().maxOf { state ->
+        }.toSet() to minute + 1
+    }.drop(minutes).first().first.maxOf { state ->
         state.resources[ResourceType.GEODE]!!
     }
 
