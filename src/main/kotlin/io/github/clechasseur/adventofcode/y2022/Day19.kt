@@ -7,9 +7,11 @@ object Day19 {
 
     private val blueprintRegex = """^Blueprint (\d+): Each ore robot costs (\d+) ore. Each clay robot costs (\d+) ore. Each obsidian robot costs (\d+) ore and (\d+) clay. Each geode robot costs (\d+) ore and (\d+) obsidian.$""".toRegex()
 
-    fun part1(): Int = input.lines().map { it.toBlueprint() }.sumOf { it.qualityLevel(24) }
+    fun part1(): Int = input.lines().map { it.toBlueprint() }.sumOf { it.geodesAfter(24) * it.id }
 
-    private fun Blueprint.qualityLevel(minutes: Int): Int = id * generateSequence(setOf(State(this))) { states ->
+    fun part2(): Int = input.lines().take(3).map { it.toBlueprint().geodesAfter(32) }.reduce { a, b -> a * b }
+
+    private fun Blueprint.geodesAfter(minutes: Int): Int = generateSequence(setOf(State(this))) { states ->
         val nextStates = states.asSequence().flatMap { it.nextStates() }.toSet()
         nextStates.groupBy { it.robots }.values.flatMap { bestStates ->
             bestStates.filter { state -> bestStates.none {
