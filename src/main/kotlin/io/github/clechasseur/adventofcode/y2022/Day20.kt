@@ -24,6 +24,8 @@ object Day20 {
             }
         }
 
+        llfile.forEach { println("${it.index}:${it.value}") }
+
         val node0 = llfile.findNode { it.value == 0L }!!
         val after1000 = node0.skipForward(1000)
         val after2000 = after1000.skipForward(1000)
@@ -69,7 +71,7 @@ object Day20 {
         override fun toString(): String = value.toString()
     }
 
-    private class LinkedList<T>(items: Iterable<T> = emptyList()) {
+    private class LinkedList<T>(items: Iterable<T> = emptyList()) : Iterable<T> {
         init {
             items.forEach { add(it) }
         }
@@ -96,6 +98,21 @@ object Day20 {
                 node = node.next
             }
             if (node != head) node else null
+        }
+
+        override fun iterator(): Iterator<T> = object : Iterator<T> {
+            private var node = head
+            private var done = node == null
+
+            override fun hasNext(): Boolean = !done
+            override fun next(): T {
+                val value = node!!.value
+                node = node!!.next
+                if (node == head) {
+                    done = true
+                }
+                return value
+            }
         }
     }
 }
