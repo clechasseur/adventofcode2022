@@ -3,7 +3,16 @@ package io.github.clechasseur.adventofcode.y2022
 import io.github.clechasseur.adventofcode.y2022.data.Day20Data
 
 object Day20 {
-    private val input = Day20Data.input
+//    private val input = Day20Data.input
+    private val input = """
+        1
+        2
+        -3
+        3
+        -2
+        0
+        4
+    """.trimIndent()
 
     private const val decryptionKey = 811589153L
 
@@ -12,90 +21,32 @@ object Day20 {
     fun part2(): Long = findGrove(input.lines().map { it.toLong() * decryptionKey }, 10)
 
     private fun findGrove(file: List<Long>, mixTimes: Int): Long {
-        val llfile = LinkedList(file.withIndex())
+        val indexedFile = file.withIndex().toMutableList()
         (0 until mixTimes).forEach { _ ->
             file.indices.forEach { i ->
-                val node = llfile.findNode { it.index == i }!!
-                if (node.value.value >= 0) {
-                    node.moveForward(node.value.value)
+                val mixedI = indexedFile.indexOfFirst { it.index == i }
+                val value = indexedFile[mixedI].value
+                val newMixedI = if (value >= 0) {
+                    ((mixedI.toLong() + value + 1L) % indexedFile.size.toLong()).toInt()
                 } else {
-                    node.moveBackward(-node.value.value)
+                    indexedFile.size - ((indexedFile.size.toLong() - mixedI - value) % indexedFile.size.toLong()).toInt()
+                }
+                if (newMixedI <= mixedI) {
+                    indexedFile.removeAt(mixedI)
+                    indexedFile.add(newMixedI, IndexedValue(i, value))
+                } else {
+                    indexedFile.add(newMixedI, IndexedValue(i, value))
+                    indexedFile.removeAt(mixedI)
                 }
             }
         }
 
-        val node0 = llfile.findNode { it.value == 0L }!!
-        val after1000 = node0.skipForward(1000)
-        val after2000 = after1000.skipForward(1000)
-        val after3000 = after2000.skipForward(1000)
-        return after1000.value.value + after2000.value.value + after3000.value.value
-    }
+        indexedFile.forEach { println(it.value) }
 
-    private class Node<T>(val value: T) {
-        var next: Node<T>? = null
-        var prev: Node<T>? = null
-
-        fun moveForward(n: Long) {
-            (0 until n).forEach { _ ->
-                val nextNext = next!!.next
-                nextNext!!.prev = this
-                prev!!.next = next
-                next!!.prev = prev
-                next!!.next = this
-                prev = next
-                next = nextNext
-            }
-        }
-        fun moveBackward(n: Long) {
-            (0 until n).forEach { _ ->
-                val prevPrev = prev!!.prev
-                prevPrev!!.next = this
-                next!!.prev = prev
-                prev!!.prev = this
-                prev!!.next = next
-                next = prev
-                prev = prevPrev
-            }
-        }
-
-        fun skipForward(n: Long): Node<T> {
-            var node = this
-            (0 until n).forEach { _ ->
-                node = node.next!!
-            }
-            return node
-        }
-
-        override fun toString(): String = value.toString()
-    }
-
-    private class LinkedList<T>(items: Iterable<T> = emptyList()) {
-        init {
-            items.forEach { add(it) }
-        }
-
-        var head: Node<T>? = null
-            private set
-
-        fun add(value: T) {
-            val node = Node(value)
-            node.next = head ?: node
-            node.prev = head?.prev ?: node
-            head?.prev?.next = node
-            head?.prev = node
-            head = head ?: node
-        }
-
-        fun findNode(pred: (T) -> Boolean): Node<T>? = if (head == null) {
-            null
-        } else if (pred(head!!.value)) {
-            head
-        } else {
-            var node = head!!.next
-            while (node != head && !pred(node!!.value)) {
-                node = node.next
-            }
-            if (node != head) node else null
-        }
+        val i0 = indexedFile.indexOfFirst { it.value == 0L }
+        val i1000 = (i0 + 1000) % indexedFile.size
+        val i2000 = (i0 + 2000) % indexedFile.size
+        val i3000 = (i0 + 3000) % indexedFile.size
+        return indexedFile[i1000].value + indexedFile[i2000].value + indexedFile[i3000].value
     }
 }
