@@ -3,16 +3,7 @@ package io.github.clechasseur.adventofcode.y2022
 import io.github.clechasseur.adventofcode.y2022.data.Day20Data
 
 object Day20 {
-//    private val input = Day20Data.input
-    private val input = """
-        1
-        2
-        -3
-        3
-        -2
-        0
-        4
-    """.trimIndent()
+    private val input = Day20Data.input
 
     private const val decryptionKey = 811589153L
 
@@ -41,7 +32,7 @@ object Day20 {
             }
         }
 
-        indexedFile.forEach { println(it.value) }
+        indexedFile.forEach { println("${it.index}:${it.value}") }
 
         val i0 = indexedFile.indexOfFirst { it.value == 0L }
         val i1000 = (i0 + 1000) % indexedFile.size
