@@ -12,7 +12,7 @@ object Day20 {
     fun part2(): Long = findGrove(input.lines().map { it.toLong() * decryptionKey }, 10)
 
     private fun findGrove(file: List<Long>, mixTimes: Int): Long {
-        val indexedFile = file.withIndex().toMutableList()
+        val llfile = LinkedList(file.withIndex())
         (0 until mixTimes).forEach { _ ->
             file.indices.forEach { i ->
                 val node = llfile.findNode { it.index == i }!!
@@ -21,20 +21,13 @@ object Day20 {
                 } else {
                     node.moveBackward(-node.value.value % (file.size - 1).toLong())
                 }
-                if (newMixedI <= mixedI) {
-                    indexedFile.removeAt(mixedI)
-                    indexedFile.add(newMixedI, IndexedValue(i, value))
-                } else {
-                    indexedFile.add(newMixedI, IndexedValue(i, value))
-                    indexedFile.removeAt(mixedI)
-                }
             }
         }
 
         val node0 = llfile.findNode { it.value == 0L }!!
-        val after1000 = node0.skipForward(1000)
-        val after2000 = after1000.skipForward(1000)
-        val after3000 = after2000.skipForward(1000)
+        val after1000 = node0.skipForward(1000L)
+        val after2000 = after1000.skipForward(1000L)
+        val after3000 = after2000.skipForward(1000L)
         return after1000.value.value + after2000.value.value + after3000.value.value
     }
 
@@ -89,6 +82,18 @@ object Day20 {
             head?.prev?.next = node
             head?.prev = node
             head = head ?: node
+        }
+
+        fun findNode(pred: (T) -> Boolean): Node<T>? = if (head == null) {
+            null
+        } else if (pred(head!!.value)) {
+            head
+        } else {
+            var node = head!!.next
+            while (node != head && !pred(node!!.value)) {
+                node = node.next
+            }
+            if (node != head) node else null
         }
     }
 }

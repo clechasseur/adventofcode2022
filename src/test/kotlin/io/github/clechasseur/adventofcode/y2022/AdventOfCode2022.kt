@@ -245,7 +245,6 @@ class AdventOfCode2022 {
 
     class Day20Puzzles {
         @Test
-        @Ignore("Doesn't work")
         fun `day 20, part 1`() {
             assertEquals(4914L, Day20.part1())
         }
