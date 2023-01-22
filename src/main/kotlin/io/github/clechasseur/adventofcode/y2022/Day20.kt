@@ -16,7 +16,7 @@ object Day20 {
         (0 until mixTimes).forEach { _ ->
             file.indices.forEach { i ->
                 val node = llfile.findNode { it.index == i }!!
-                if (node.value.value >= 0) {
+                if (node.value.value >= 0L) {
                     node.moveForward(node.value.value % (file.size - 1).toLong())
                 } else {
                     node.moveBackward(-node.value.value % (file.size - 1).toLong())
