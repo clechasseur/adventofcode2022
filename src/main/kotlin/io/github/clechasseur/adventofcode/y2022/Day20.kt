@@ -17,19 +17,17 @@ object Day20 {
             file.indices.forEach { i ->
                 val node = llfile.findNode { it.index == i }!!
                 if (node.value.value >= 0) {
-                    node.moveForward(node.value.value)
+                    node.moveForward(node.value.value % (file.size - 1).toLong())
                 } else {
-                    node.moveBackward(-node.value.value)
+                    node.moveBackward(-node.value.value % (file.size - 1).toLong())
                 }
             }
         }
 
-        llfile.forEach { println("${it.index}:${it.value}") }
-
         val node0 = llfile.findNode { it.value == 0L }!!
-        val after1000 = node0.skipForward(1000)
-        val after2000 = after1000.skipForward(1000)
-        val after3000 = after2000.skipForward(1000)
+        val after1000 = node0.skipForward(1000L)
+        val after2000 = after1000.skipForward(1000L)
+        val after3000 = after2000.skipForward(1000L)
         return after1000.value.value + after2000.value.value + after3000.value.value
     }
 
@@ -67,11 +65,9 @@ object Day20 {
             }
             return node
         }
-
-        override fun toString(): String = value.toString()
     }
 
-    private class LinkedList<T>(items: Iterable<T> = emptyList()) : Iterable<T> {
+    private class LinkedList<T>(items: Iterable<T> = emptyList()) {
         init {
             items.forEach { add(it) }
         }
@@ -98,21 +94,6 @@ object Day20 {
                 node = node.next
             }
             if (node != head) node else null
-        }
-
-        override fun iterator(): Iterator<T> = object : Iterator<T> {
-            private var node = head
-            private var done = node == null
-
-            override fun hasNext(): Boolean = !done
-            override fun next(): T {
-                val value = node!!.value
-                node = node!!.next
-                if (node == head) {
-                    done = true
-                }
-                return value
-            }
         }
     }
 }
