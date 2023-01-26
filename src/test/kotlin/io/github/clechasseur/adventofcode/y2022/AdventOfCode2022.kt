@@ -302,4 +302,11 @@ class AdventOfCode2022 {
             assertEquals(856, Day24.part2())
         }
     }
+
+    class Day25Puzzles {
+        @Test
+        fun `day 25, part 1`() {
+            assertEquals("2=10---0===-1--01-20", Day25.part1())
+        }
+    }
 }
